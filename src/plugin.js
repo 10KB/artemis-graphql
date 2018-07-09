@@ -17,18 +17,17 @@ export default {
 }
 */
 
-import ApolloClient from "apollo-client";
-import { InMemoryCache } from "apollo-cache-inmemory";
-import { ApolloLink } from "apollo-link";
-import { createHttpLink } from "apollo-link-http";
-import fetch from "node-fetch";
-import { BatchHttpLink } from "apollo-link-batch-http";
+import ApolloClient from 'apollo-client';
+import { InMemoryCache } from 'apollo-cache-inmemory';
+import { ApolloLink } from 'apollo-link';
+import { createHttpLink } from 'apollo-link-http';
+import fetch from 'node-fetch';
+import { BatchHttpLink } from 'apollo-link-batch-http';
 
-const serverUri = "<%= options.serverUri %>";
-const localUri = "<%= options.localUri %>";
+const serverUri = '<%= options.serverUri %>';
+const localUri = '<%= options.localUri %>';
 
-const createBatchedPayloadGetter = results => async () =>
-  JSON.stringify(results.map(result => result.payload));
+const createBatchedPayloadGetter = results => async () => JSON.stringify(results.map(result => result.payload));
 
 const batchFetch = async (uri, options) => {
   const response = await fetch(uri, options);
@@ -41,7 +40,7 @@ function createClient({ link, queries }) {
   const defaultLink = ApolloLink.split(
     () => process.server,
     createHttpLink({ uri: serverUri, fetch }),
-    new BatchHttpLink({ uri: localUri, fetch: batchFetch })
+    new BatchHttpLink({ uri: localUri, fetch: batchFetch }),
   );
   console.log(serverUri);
   console.log(localUri);
@@ -49,19 +48,19 @@ function createClient({ link, queries }) {
 
   const client = new ApolloClient({
     link: link || defaultLink,
-    cache
+    cache,
   });
 
   function execQuery(config, vars = {}) {
     const [name, variables] = Array.isArray(config) ? config : [config, vars];
 
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       client
-        .query({ query: queries[name], fetchPolicy: "no-cache", variables })
-        .then(data => {
+        .query({ query: queries[name], fetchPolicy: 'no-cache', variables })
+        .then((data) => {
           resolve({ data: data.data, errors: [] });
         })
-        .catch(errors => {
+        .catch((errors) => {
           console.error(errors); // eslint-disable-line
           resolve({ data: null, errors });
         });
@@ -75,9 +74,9 @@ function createClient({ link, queries }) {
   function query(config, variables) {
     if (Array.isArray(config)) {
       return execQueries(
-        config.map((name, index) => [name, variables && variables[index]])
+        config.map((name, index) => [name, variables && variables[index]]),
       );
-    } else if (config === Object(config)) {
+    } if (config === Object(config)) {
       return execQueries(Object.entries(config));
     }
     return execQuery(config, variables);
@@ -87,9 +86,8 @@ function createClient({ link, queries }) {
     const results = await query(config, variables);
     if (Array.isArray(results)) {
       return Object.assign({}, ...results.map(result => result.data));
-    } else {
-      return results.data;
     }
+    return results.data;
   }
 
   return { query, q };
@@ -98,11 +96,11 @@ function createClient({ link, queries }) {
 export { createClient };
 
 export default async (_, inject) => {
-  const queries = require('./../graphql/queries').default
+  const queries = require('./../graphql/queries').default;
   // const subscriptions = require("../../graphql/queries").default;
   // const mutations = require("../../graphql/queries").default;
   const { query, q } = createClient({ queries });
 
-  inject("query", query);
-  inject("q", q);
+  inject('query', query);
+  inject('q', q);
 };
