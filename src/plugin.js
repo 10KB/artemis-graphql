@@ -100,6 +100,10 @@ function createClient({ link, queries, mutations }) {
       return Object.assign({}, ...results.map(result => result.data));
     }
     this.$graphQLErrors = results.errors;
+
+    const rootError = results.errors.find(error => error.path === undefined);
+    this.$graphQLError = rootError && rootError.message;
+
     if (results.errors && this.$v) {
       this.$v.$touch();
       this.$v.$reset();
