@@ -23,6 +23,7 @@ import { ApolloLink } from 'apollo-link';
 import { createHttpLink } from 'apollo-link-http';
 import fetch from 'node-fetch';
 import { BatchHttpLink } from 'apollo-link-batch-http';
+import { partial } from 'lodash';
 
 const serverUri = '<%= options.serverUri %>';
 const localUri = '<%= options.localUri %>';
@@ -36,14 +37,14 @@ const batchFetch = async (uri, options) => {
   return { text };
 };
 
-function createClient({ link, queries }) {
+function createClient({ link, queries, mutations }) {
   const defaultLink = ApolloLink.split(
     () => process.server,
     createHttpLink({ uri: serverUri, fetch }),
-    new BatchHttpLink({ uri: localUri, fetch: batchFetch }),
+    createHttpLink({ uri: localUri, fetch }),
+    // new BatchHttpLink({ uri: localUri, fetch: batchFetch }),
   );
-  console.log(serverUri);
-  console.log(localUri);
+
   const cache = new InMemoryCache();
 
   const client = new ApolloClient({
@@ -51,56 +52,78 @@ function createClient({ link, queries }) {
     cache,
   });
 
-  function execQuery(config, vars = {}) {
+  const docs = {
+    query: queries,
+    mutation: mutations,
+  };
+
+  const executor = {
+    query: 'query',
+    mutation: 'mutate',
+  };
+
+  function exec(type, config, vars = {}) {
     const [name, variables] = Array.isArray(config) ? config : [config, vars];
 
     return new Promise((resolve) => {
-      client
-        .query({ query: queries[name], fetchPolicy: 'no-cache', variables })
+      client[executor[type]]({ [type]: docs[type][name], fetchPolicy: 'no-cache', variables })
         .then((data) => {
           resolve({ data: data.data, errors: [] });
         })
         .catch((errors) => {
           console.error(errors); // eslint-disable-line
-          resolve({ data: null, errors });
+          resolve({ data: null, errors: errors.graphQLErrors });
         });
     });
   }
 
-  function execQueries(configs) {
-    return Promise.all(configs.map(execQuery));
+  function execAll(type, configs) {
+    const executor = partial(exec, type);
+    return Promise.all(configs.map(executor));
   }
 
-  function query(config, variables) {
+  function call(type, config, variables) {
     if (Array.isArray(config)) {
-      return execQueries(
+      return execAll(
+        type,
         config.map((name, index) => [name, variables && variables[index]]),
       );
     } if (config === Object(config)) {
-      return execQueries(Object.entries(config));
+      return execAll(type, Object.entries(config));
     }
-    return execQuery(config, variables);
+    return exec(type, config, variables);
   }
 
-  async function q(config, variables) {
-    const results = await query(config, variables);
+  async function c(type, config, variables) {
+    const results = await call(type, config, variables);
     if (Array.isArray(results)) {
       return Object.assign({}, ...results.map(result => result.data));
     }
     return results.data;
   }
 
-  return { query, q };
+  const query = partial(call, 'query');
+  const q = partial(c, 'query');
+  const mutate = partial(call, 'mutation');
+  const m = partial(c, 'mutation');
+
+  return {
+    query, q, mutate, m,
+  };
 }
 
 export { createClient };
 
 export default async (_, inject) => {
-  const queries = require('./../graphql/queries').default;
-  // const subscriptions = require("../../graphql/queries").default;
-  // const mutations = require("../../graphql/queries").default;
-  const { query, q } = createClient({ queries });
+  const queries = require('<%= options.graphqlFolder %>/queries').default;
+  const mutations = require('<%= options.graphqlFolder %>/mutations').default;
+
+  const {
+    query, q, mutate, m,
+  } = createClient({ queries, mutations });
 
   inject('query', query);
   inject('q', q);
+  inject('mutate', mutate);
+  inject('m', m);
 };
