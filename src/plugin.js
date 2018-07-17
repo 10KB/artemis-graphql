@@ -72,7 +72,7 @@ function createClient({ link, queries, mutations }) {
         })
         .catch((errors) => {
           console.error(errors); // eslint-disable-line
-          resolve({ data: null, errors: errors.graphQLErrors });
+          resolve({ data: {}, errors: errors.graphQLErrors });
         });
     });
   }
@@ -98,6 +98,11 @@ function createClient({ link, queries, mutations }) {
     const results = await call(type, config, variables);
     if (Array.isArray(results)) {
       return Object.assign({}, ...results.map(result => result.data));
+    }
+    this.$graphQLErrors = results.errors;
+    if (results.errors && this.$v) {
+      this.$v.$touch();
+      this.$v.$reset();
     }
     return results.data;
   }
