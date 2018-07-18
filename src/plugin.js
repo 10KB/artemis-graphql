@@ -23,10 +23,22 @@ import { ApolloLink } from 'apollo-link';
 import { createHttpLink } from 'apollo-link-http';
 import fetch from 'node-fetch';
 import { BatchHttpLink } from 'apollo-link-batch-http';
+import { setContext } from 'apollo-link-context';
 import { partial } from 'lodash';
 
 const serverUri = '<%= options.serverUri %>';
 const localUri = '<%= options.localUri %>';
+
+const createAuthLink = store => setContext((_, { headers }) => {
+  const token = store.getters['auth/token'];
+
+  return {
+    headers: {
+      ...headers,
+      authorization: token ? 'Bearer ' + token : '',
+    },
+  };
+});
 
 const createBatchedPayloadGetter = results => async () => JSON.stringify(results.map(result => result.payload));
 
@@ -37,13 +49,18 @@ const batchFetch = async (uri, options) => {
   return { text };
 };
 
-function createClient({ link, queries, mutations }) {
-  const defaultLink = ApolloLink.split(
+function createClient({ link, store, queries, mutations }) {
+  const splitLink = ApolloLink.split(
     () => process.server,
     createHttpLink({ uri: serverUri, fetch }),
     createHttpLink({ uri: localUri, fetch }),
     // new BatchHttpLink({ uri: localUri, fetch: batchFetch }),
   );
+
+  const defaultLink = ApolloLink.from([
+    createAuthLink(store),
+    splitLink,
+  ]);
 
   const cache = new InMemoryCache();
 
@@ -123,13 +140,13 @@ function createClient({ link, queries, mutations }) {
 
 export { createClient };
 
-export default async (_, inject) => {
+export default ({ store }, inject) => {
   const queries = require('<%= options.graphqlFolder %>/queries').default;
   const mutations = require('<%= options.graphqlFolder %>/mutations').default;
 
   const {
     query, q, mutate, m,
-  } = createClient({ queries, mutations });
+  } = createClient({ store, queries, mutations });
 
   inject('query', query);
   inject('q', q);
