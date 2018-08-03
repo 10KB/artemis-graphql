@@ -36,7 +36,7 @@ const createAuthLink = store => setContext((_, { headers }) => {
   return {
     headers: {
       ...headers,
-      ...(context && { 'X-Authorization-Content': context }),
+      ...(context && { 'X-Authorization-Context': context }),
       Authorization: token ? 'Bearer ' + token : '',
     },
   };
