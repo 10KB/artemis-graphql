@@ -14,8 +14,8 @@ module.exports = function ArtemisGraphql(moduleOptions) {
   this.addPlugin({
     src: resolve(__dirname, 'src', 'plugin.js'),
     options: {
-      localUri: moduleOptions.localUri || 'http://localhost:4000/api/grapqhl',
-      serverUri: moduleOptions.serverUri || 'http://localhost:4000/api/grapqhl',
+      browserUri: moduleOptions.browserUri,
+      serverUri: moduleOptions.serverUri,
       graphqlFolder: moduleOptions.graphqlFolder || '~/graphql',
     },
   });

@@ -27,17 +27,15 @@ import { setContext } from 'apollo-link-context';
 import { partial } from 'lodash';
 
 const serverUri = '<%= options.serverUri %>';
-const localUri = '<%= options.localUri %>';
+const browserUri = '<%= options.browserUri %>';
 
 const createAuthLink = store => setContext((_, { headers }) => {
   const token = store.getters['auth/token'];
-  const context = store.getters['auth/context'];
 
   return {
     headers: {
       ...headers,
-      ...(context && { 'X-Authorization-Context': context }),
-      Authorization: token ? 'Bearer ' + token : '',
+      authorization: token ? 'Bearer ' + token : '',
     },
   };
 });
@@ -51,11 +49,18 @@ const batchFetch = async (uri, options) => {
   return { text };
 };
 
-function createClient({ link, store, queries, mutations }) {
+function maybeFetchEnv(uri, env) {
+  if (uri.startsWith('env://')) {
+    return env[uri.substr(6)];
+  }
+  return uri;
+}
+
+function createClient({ link, store, queries, mutations, env }) {
   const splitLink = ApolloLink.split(
     () => process.server,
-    createHttpLink({ uri: serverUri, fetch }),
-    createHttpLink({ uri: localUri, fetch }),
+    createHttpLink({ uri: maybeFetchEnv(serverUri, env), fetch }),
+    createHttpLink({ uri: maybeFetchEnv(browserUri, env), fetch }),
     // new BatchHttpLink({ uri: localUri, fetch: batchFetch }),
   );
 
@@ -142,13 +147,14 @@ function createClient({ link, store, queries, mutations }) {
 
 export { createClient };
 
-export default ({ store }, inject) => {
+export default ({ store, nuxtState, isServer }, inject) => {
   const queries = require('<%= options.graphqlFolder %>/queries').default;
   const mutations = require('<%= options.graphqlFolder %>/mutations').default;
+  const env = isServer ? process.env : nuxtState.env || {};
 
   const {
     query, q, mutate, m,
-  } = createClient({ store, queries, mutations });
+  } = createClient({ store, queries, mutations, env });
 
   inject('query', query);
   inject('q', q);
