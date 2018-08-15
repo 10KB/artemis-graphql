@@ -31,11 +31,13 @@ const browserUri = '<%= options.browserUri %>';
 
 const createAuthLink = store => setContext((_, { headers }) => {
   const token = store.getters['auth/token'];
+  const context = store.getters['auth/context'];
 
   return {
     headers: {
       ...headers,
-      authorization: token ? 'Bearer ' + token : '',
+      ...(context && { 'X-Authorization-Context': context }),
+      Authorization: token ? 'Bearer ' + token : '',
     },
   };
 });
