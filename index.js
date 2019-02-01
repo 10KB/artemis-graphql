@@ -16,6 +16,7 @@ module.exports = function ArtemisGraphql(moduleOptions) {
     options: {
       browserUri: moduleOptions.browserUri,
       serverUri: moduleOptions.serverUri,
+      extendedHeaders: moduleOptions.extendedHeaders,
       graphqlFolder: moduleOptions.graphqlFolder || '~/graphql',
     },
   });

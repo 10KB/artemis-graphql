@@ -28,21 +28,22 @@ import { partial } from 'lodash';
 
 const serverUri = '<%= options.serverUri %>';
 const browserUri = '<%= options.browserUri %>';
+const extendedHeadersStoreLocation = '<%= options.extendedHeaders %>';
 
-const createAuthLink = store => setContext((_, { headers }) => {
-  const token = store.getters['auth/token'];
-  const context = store.getters['auth/context'];
+const createAuthLink = store =>
+  setContext((_, { headers }) => {
+    const extendedHeaders = store.getters[extendedHeadersStoreLocation];
 
-  return {
-    headers: {
-      ...headers,
-      ...(context && { 'X-Authorization-Context': context }),
-      Authorization: token ? 'Bearer ' + token : '',
-    },
-  };
-});
+    return {
+      headers: {
+        ...headers,
+        ...extendedHeaders,
+      },
+    };
+  });
 
-const createBatchedPayloadGetter = results => async () => JSON.stringify(results.map(result => result.payload));
+const createBatchedPayloadGetter = results => async () =>
+  JSON.stringify(results.map(result => result.payload));
 
 const batchFetch = async (uri, options) => {
   const response = await fetch(uri, options);
@@ -58,7 +59,9 @@ function maybeFetchEnv(uri, env) {
   return uri;
 }
 
-function createClient({ link, store, queries, mutations, env }) {
+function createClient({
+ link, store, queries, mutations, env 
+}) {
   const splitLink = ApolloLink.split(
     () => process.server,
     createHttpLink({ uri: maybeFetchEnv(serverUri, env), fetch }),
@@ -66,10 +69,7 @@ function createClient({ link, store, queries, mutations, env }) {
     // new BatchHttpLink({ uri: localUri, fetch: batchFetch }),
   );
 
-  const defaultLink = ApolloLink.from([
-    createAuthLink(store),
-    splitLink,
-  ]);
+  const defaultLink = ApolloLink.from([createAuthLink(store), splitLink]);
 
   const cache = new InMemoryCache();
 
@@ -92,7 +92,11 @@ function createClient({ link, store, queries, mutations, env }) {
     const [name, variables] = Array.isArray(config) ? config : [config, vars];
 
     return new Promise((resolve) => {
-      client[executor[type]]({ [type]: docs[type][name], fetchPolicy: 'no-cache', variables })
+      client[executor[type]]({
+        [type]: docs[type][name],
+        fetchPolicy: 'no-cache',
+        variables,
+      })
         .then((data) => {
           resolve({ data: data.data, errors: [] });
         })
@@ -114,7 +118,8 @@ function createClient({ link, store, queries, mutations, env }) {
         type,
         config.map((name, index) => [name, variables && variables[index]]),
       );
-    } if (config === Object(config)) {
+    }
+    if (config === Object(config)) {
       return execAll(type, Object.entries(config));
     }
     return exec(type, config, variables);
@@ -143,7 +148,10 @@ function createClient({ link, store, queries, mutations, env }) {
   const m = partial(c, 'mutation');
 
   return {
-    query, q, mutate, m,
+    query,
+    q,
+    mutate,
+    m,
   };
 }
 
@@ -155,8 +163,13 @@ export default ({ store, nuxtState, isServer }, inject) => {
   const env = isServer ? process.env : nuxtState.env || {};
 
   const {
-    query, q, mutate, m,
-  } = createClient({ store, queries, mutations, env });
+ query, q, mutate, m 
+} = createClient({
+    store,
+    queries,
+    mutations,
+    env,
+  });
 
   inject('query', query);
   inject('q', q);
