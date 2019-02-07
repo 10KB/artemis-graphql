@@ -157,10 +157,9 @@ function createClient({
 
 export { createClient };
 
-export default ({ store, nuxtState, isServer }, inject) => {
+export default ({ store, env }, inject) => {
   const queries = require('<%= options.graphqlFolder %>/queries').default;
   const mutations = require('<%= options.graphqlFolder %>/mutations').default;
-  const env = isServer ? process.env : nuxtState.env || {};
 
   const {
  query, q, mutate, m 
