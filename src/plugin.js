@@ -60,7 +60,7 @@ function maybeFetchEnv(uri, env) {
 }
 
 function createClient({
- link, store, queries, mutations, env 
+  link, store, queries, mutations, env,
 }) {
   const splitLink = ApolloLink.split(
     () => process.server,
@@ -101,7 +101,9 @@ function createClient({
           resolve({ data: data.data, errors: [] });
         })
         .catch((errors) => {
-          console.error(errors); // eslint-disable-line
+          if (!process.env.NODE_ENV === 'production') {
+            console.error(errors); // eslint-disable-line
+          }
           resolve({ data: {}, errors: errors.graphQLErrors });
         });
     });
@@ -162,8 +164,8 @@ export default ({ store, env }, inject) => {
   const mutations = require('<%= options.graphqlFolder %>/mutations').default;
 
   const {
- query, q, mutate, m 
-} = createClient({
+    query, q, mutate, m,
+  } = createClient({
     store,
     queries,
     mutations,
